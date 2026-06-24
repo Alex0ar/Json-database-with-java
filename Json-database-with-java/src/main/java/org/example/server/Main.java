@@ -22,15 +22,17 @@ public class Main {
         try (
                 ServerSocket serverSocket = new ServerSocket(port, 50, InetAddress.getByName(address));
         ) {
-            while (true) {
-                try (
-                        Socket socket = serverSocket.accept();
-                        DataOutputStream output = new DataOutputStream(socket.getOutputStream());
-                        DataInputStream input = new DataInputStream(socket.getInputStream());
-                ) {
-                    output.writeUTF("Hello World");
-                    output.flush();
-                }
+            System.out.println("Server started!");
+            try (
+                    Socket socket = serverSocket.accept();
+                    DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+                    DataInputStream input = new DataInputStream(socket.getInputStream());
+            ) {
+                String msg = input.readUTF();
+                String[] parts = msg.split(" ");
+                System.out.println("Received: " + msg);
+                output.writeUTF("A record # " + parts[parts.length - 1] + " was sent!");
+                System.out.println("Sent: A record # " + parts[parts.length - 1] + " was sent!");
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

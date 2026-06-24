@@ -16,6 +16,11 @@ public class Main {
                 DataInputStream input = new DataInputStream(socket.getInputStream());
                 DataOutputStream output = new DataOutputStream(socket.getOutputStream());
         ) {
+            System.out.println("Client started!");
+            output.writeUTF("Give me a record # 12");
+            System.out.println("Sent: Give me a record # 12");
+            String msg = input.readUTF();
+            System.out.println("Received: " + msg);
 
         } catch (UnknownHostException e) {
             throw new RuntimeException(e);
