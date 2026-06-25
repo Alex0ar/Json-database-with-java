@@ -1,34 +1,45 @@
 package org.example.server;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.Scanner;
 
 public class Controller {
+    private static final String address = "127.0.0.1";
+    private static final int port = 23456;
+
     private Scanner scanner = new Scanner(System.in);
     private String request;
     private JsonStorage jsonStorage = new JsonStorage();
 
-    public void readClientRequests() {
-        while (true) {
-            request = scanner.nextLine();
-            if (request.equals("exit")) {
-                break;
+    public void startServer() {
+        try (
+                ServerSocket serverSocket = new ServerSocket(port, 50, InetAddress.getByName(address));
+        ) {
+            System.out.println("Server started!");
+            try (
+                    Socket socket = serverSocket.accept();
+                    DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+                    DataInputStream input = new DataInputStream(socket.getInputStream());
+            ) {
+                String msg = input.readUTF();
+                String[] msgArray = msg.split(" ", 3);
+                String response = switch (msgArray[0]) {
+                    case "get" -> jsonStorage.get(Integer.parseInt(msgArray[1]));
+                    case "set" -> jsonStorage.set(Integer.parseInt(msgArray[1]), msgArray[2]);
+                    case "delete" -> jsonStorage.remove(Integer.parseInt(msgArray[1]));
+                    default -> throw new IllegalStateException("Unexpected value: " + msgArray[0]);
+                };
+
+                output.writeUTF(response);
+
             }
-            String[] requestArray = request.strip().split(" ", 3);
-            String response = switch (requestArray[0]) {
-                case "get" -> {
-                    yield jsonStorage.get(Integer.parseInt(requestArray[1]));
-                }
-                case "set" -> {
-                    yield jsonStorage.set(Integer.parseInt(requestArray[1]), requestArray[2]);
-                }
-                case "delete" -> {
-                    yield jsonStorage.remove(Integer.parseInt(requestArray[1]));
-                }
-                default -> throw new IllegalStateException("Unexpected value: " + requestArray[0]);
-            };
-            System.out.println(response);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
-
-
 }
