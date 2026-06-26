@@ -1,14 +1,13 @@
 package org.example.client;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.google.gson.JsonObject;
 
 public class Main {
     private static final String address = "127.0.0.1";
@@ -16,10 +15,10 @@ public class Main {
 
     @Parameter(names = "-t")
     private String type;
-    @Parameter(names = "-i")
-    private int index;
-    @Parameter(names = "-m")
-    private String message = "";
+    @Parameter(names = "-k")
+    private String key;
+    @Parameter(names = "-v")
+    private String value = "";
 
     public static void main(String[] args) {
         Main main = new Main();
@@ -30,23 +29,23 @@ public class Main {
 
         try(
                 Socket socket = new Socket(InetAddress.getByName(address), port);
-                DataInputStream input = new DataInputStream(socket.getInputStream());
-                DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+                BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                PrintWriter output = new PrintWriter(socket.getOutputStream(), true);
         ) {
             System.out.println("Client started!");
-            System.out.println("type: " + main.type);
-            System.out.println("index: " + main.index);
-            System.out.println("message: " + main.message);
+            JsonObject request = new JsonObject();
+            request.addProperty("type", main.type);
+            request.addProperty("key", main.key);
+
             if (main.type.equals("set")) {
-                output.writeUTF(main.type + " " + main.index + " " + main.message);
-                System.out.println("sent: " + main.type + " " + main.index + " " + main.message);
-            } else {
-                output.writeUTF(main.type + " " + main.index);
-                System.out.println("sent: " + main.type + " " + main.index);
+                request.addProperty("value", main.value);
             }
 
-            String msg = input.readUTF();
-            System.out.println("Received: " + msg);
+            output.println(request.toString());
+            System.out.println("Sent: " + request);
+
+            String received = input.readLine();
+            System.out.println("Received: " + received);
 
         } catch (UnknownHostException e) {
             throw new RuntimeException(e);

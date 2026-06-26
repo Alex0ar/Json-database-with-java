@@ -1,8 +1,9 @@
 package org.example.server;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -13,8 +14,8 @@ public class Controller {
     private static final int port = 23456;
 
     private Scanner scanner = new Scanner(System.in);
-    private String request;
-    private JsonStorage jsonStorage = new JsonStorage();
+    //private JsonStorage jsonStorage = new JsonStorage();
+    private JsonStorageTemporary jsonStorage = new JsonStorageTemporary();
 
     public void startServer() {
         try (
@@ -24,20 +25,24 @@ public class Controller {
             while (true) {
                 try (
                         Socket socket = serverSocket.accept();
-                        DataOutputStream output = new DataOutputStream(socket.getOutputStream());
-                        DataInputStream input = new DataInputStream(socket.getInputStream());
+                        BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                        PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
                 ) {
-                    String msg = input.readUTF();
-                    String[] msgArray = msg.split(" ", 3);
-                    String response = switch (msgArray[0]) {
-                        case "get" -> jsonStorage.get(Integer.parseInt(msgArray[1]));
-                        case "set" -> jsonStorage.set(Integer.parseInt(msgArray[1]), msgArray[2]);
-                        case "delete" -> jsonStorage.remove(Integer.parseInt(msgArray[1]));
-                        case "exit" -> "OK";
-                        default -> throw new IllegalStateException("Unexpected value: " + msgArray[0]);
+                    String requestString = in.readLine();
+                    JsonObject request = new JsonParser().parse(requestString).getAsJsonObject();
+                    JsonObject response = switch (request.get("type").getAsString()) {
+                        case "get" -> jsonStorage.get(request.get("key").getAsString());
+                        case "set" -> jsonStorage.set(request.get("key").getAsString(), request.get("value").getAsString());
+                        case "delete" -> jsonStorage.delete(request.get("key").getAsString());
+                        case "exit" -> {
+                            JsonObject responseJson = new JsonObject();
+                            responseJson.addProperty("response", "OK");
+                            yield responseJson;
+                        }
+                        default -> throw new IllegalStateException("Unexpected value: " + request.get("type"));
                     };
-                    output.writeUTF(response);
-                    if (msgArray[0].equals("exit")) {
+                    out.println(response.toString());
+                    if (request.get("type").getAsString().equals("exit")) {
                         break;
                     }
                 }
