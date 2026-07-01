@@ -1,13 +1,16 @@
 package org.example.client;
 
-import java.io.*;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
-
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.google.gson.JsonObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
 
 public class Main {
     private static final String address = "127.0.0.1";
@@ -31,7 +34,7 @@ public class Main {
                 Socket socket = new Socket(InetAddress.getByName(address), port);
                 BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 PrintWriter output = new PrintWriter(socket.getOutputStream(), true);
-        ) {
+                ) {
             System.out.println("Client started!");
             JsonObject request = new JsonObject();
             request.addProperty("type", main.type);
