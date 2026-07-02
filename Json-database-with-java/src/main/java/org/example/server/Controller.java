@@ -1,42 +1,23 @@
 package org.example.server;
 
-<<<<<<< Updated upstream
-=======
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.io.*;
 import java.net.*;
->>>>>>> Stashed changes
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Controller {
-    private Scanner scanner = new Scanner(System.in);
-    private String request;
-    private JsonStorage jsonStorage = new JsonStorage();
+    private static final String address = "127.0.0.1";
+    private static final int port = 23456;
 
-<<<<<<< Updated upstream
-    public void readClientRequests() {
-        while (true) {
-            request = scanner.nextLine();
-            if (request.equals("exit")) {
-                break;
-            }
-            String[] requestArray = request.strip().split(" ", 3);
-            String response = switch (requestArray[0]) {
-                case "get" -> {
-                    yield jsonStorage.get(Integer.parseInt(requestArray[1]));
-                }
-                case "set" -> {
-                    yield jsonStorage.set(Integer.parseInt(requestArray[1]), requestArray[2]);
-                }
-                case "delete" -> {
-                    yield jsonStorage.remove(Integer.parseInt(requestArray[1]));
-                }
-                default -> throw new IllegalStateException("Unexpected value: " + requestArray[0]);
-            };
-            System.out.println(response);
-=======
+    private Scanner scanner = new Scanner(System.in);
+    private JsonStorage jsonStorage = new JsonStorage();
+    //private JsonStorageTemporary jsonStorage = new JsonStorageTemporary();
+
     public void startServer() {
         //AtomicBoolean running = new AtomicBoolean(true);
         try (
@@ -55,18 +36,18 @@ public class Controller {
                 }
 
                 executor.submit(() -> {
-                    System.out.println("submit() method - beginning | Accepted connection from " + socket.getInetAddress().getHostName());
+                    //System.out.println("submit() method - beginning | Accepted connection from " + socket.getInetAddress().getHostName());
                     try (
                             socket;
                             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
                     ) {
                         String requestString = in.readLine();
-                        System.out.println("requestString: " + requestString);
+                        //System.out.println("requestString: " + requestString);
                         JsonObject request = new JsonParser().parse(requestString).getAsJsonObject();
                         JsonObject response = switch (request.get("type").getAsString()) {
                             case "get" -> {
-                                System.out.println("case get");
+                                //System.out.println("case get");
                                 yield jsonStorage.get(request.get("key").getAsString());
                             }
                             case "set" -> jsonStorage.set(request.get("key").getAsString(), request.get("value").getAsString());
@@ -82,7 +63,7 @@ public class Controller {
                             }
                             default -> throw new IllegalStateException("Unexpected value: " + request.get("type"));
                         };
-                        System.out.println("response: " + response.toString());
+                        //System.out.println("response: " + response.toString());
                         out.println(response.toString());
                     } catch (IOException e) {
                         throw new RuntimeException(e);
@@ -93,9 +74,6 @@ public class Controller {
             executor.shutdown();
         } catch (IOException e) {
             throw new RuntimeException(e);
->>>>>>> Stashed changes
         }
     }
-
-
 }

@@ -1,112 +1,102 @@
 package org.example.server;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
-import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class JsonStorage {
-<<<<<<< Updated upstream
-    private static final Path FILE = Paths.get("data.json");
-    private JsonArray data;
-
-    public void load() throws IOException {
-        String content = Files.readString(FILE);
-        data = JsonParser.parseString(content).getAsJsonArray();
-=======
-    private static ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-    private static ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
-    private static ReentrantReadWriteLock.WriteLock writeLock = lock.writeLock();
-    private static final Path FILE = Paths.get("./data.json");
+    private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private static final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
+    private static final ReentrantReadWriteLock.WriteLock writeLock = lock.writeLock();
+    private static final Path FILE = Paths.get("src", "server", "data", "db.json");
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    private JsonObject data;
 
 
-    public void loadDatabase() throws IOException {
-        System.out.println("loadDatabase() beginning");
+    private JsonObject loadDatabase() throws IOException {
+        Files.createDirectories(FILE.getParent());
+        if (!Files.exists(FILE) || Files.size(FILE) == 0) {
+            return new JsonObject();
+        }
+
+        try (Reader reader = new FileReader(FILE.toFile())) {
+            JsonElement element = JsonParser.parseReader(reader);
+            return element != null && element.isJsonObject()
+                    ? element.getAsJsonObject()
+                    : new JsonObject();
+        } catch (JsonSyntaxException e) {
+            return new JsonObject();
+        }
+    }
+
+    private void save(JsonObject data) throws IOException {
+        Files.createDirectories(FILE.getParent());
+        try (Writer writer = new FileWriter(FILE.toFile())) {
+            gson.toJson(data, writer);
+        }
+    }
+
+    public JsonObject get(String key) {
         readLock.lock();
         try {
-            try (FileReader fileReader = new FileReader(FILE.toFile())) {
-                JsonElement element = JsonParser.parseReader(fileReader).getAsJsonObject();
-                if (element.isJsonObject()) {
-                    data = element.getAsJsonObject();
-                    System.out.println(data.toString());
-                } else {
-                    data = new JsonObject();
-                }
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            JsonObject data = loadDatabase();
+            JsonObject response = new JsonObject();
+            if (data.has(key)) {
+                response.addProperty("response", "OK");
+                response.addProperty("value", data.get(key).getAsString());
+            } else {
+                response.addProperty("response", "ERROR");
+                response.addProperty("reason", "No such key");
             }
+            return response;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         } finally {
             readLock.unlock();
         }
->>>>>>> Stashed changes
     }
 
-    public void save() throws IOException {
-        Files.writeString(FILE, data.toString());
-    }
-
-<<<<<<< Updated upstream
-    public String get(int i) {
-        if (i < 0 || i >= data.size() || data.get(i).getAsString() == "") {
-            return "ERROR";
-        }
-        return data.get(i).getAsString();
-    }
-
-    public String set(int i, String value) {
-        if (i < 0 || i >= data.size()) {
-            return "ERROR";
-        } else {
-            data.set(i, new JsonPrimitive(value));
-            return "OK";
-=======
-    public JsonObject get(String key) {
+    public JsonObject set(String key, String value) {
+        writeLock.lock();
         try {
-            System.out.println("before JsonStorage.loadDatabase()");
-            loadDatabase();
-            System.out.println("JsonStorage.loadDatabase() | Database loaded");
+            JsonObject data = loadDatabase();
+            data.addProperty(key, value);
+            save(data);
         } catch (IOException e) {
             throw new RuntimeException(e);
+        } finally {
+            writeLock.unlock();
         }
         JsonObject response = new JsonObject();
-        if (data.has(key)) {
-            System.out.println("JsonStorage.data.has(key) | true");
-            response.addProperty("response", "OK");
-            response.addProperty("value", data.get(key).getAsString());
-        } else {
-            System.out.println("JsonStorage.data.has(key) | false");
-            response.addProperty("response", "ERROR");
-            response.addProperty("reason", "No such key");
->>>>>>> Stashed changes
-        }
+        response.addProperty("response", "OK");
+        return response;
     }
 
-    public String remove(int i) {
-        if (i < 0 || i >= data.size()) {
-            return "ERROR";
-        } else {
-            data.set(i, new JsonPrimitive(""));
-            return "OK";
+    public JsonObject delete(String key) {
+        writeLock.lock();
+        try {
+            JsonObject data = loadDatabase();
+            JsonObject response = new JsonObject();
+            if (data.remove(key) != null) {
+                response.addProperty("response", "OK");
+                save(data);
+            } else {
+                response.addProperty("response", "ERROR");
+                response.addProperty("reason", "No such key");
+            }
+            return response;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            writeLock.unlock();
         }
-    }
-
-    //INIT
-    public void initialize() throws IOException {
-        data = new JsonArray();
-        for (int i = 0; i < 1000; i++) {
-            data.add("");
-        }
-        Files.writeString(FILE, data.toString());
     }
 
 }
